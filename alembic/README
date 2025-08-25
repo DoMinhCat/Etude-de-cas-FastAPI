@@ -1,0 +1,5 @@
+Ce dossier contiendra vos migrations (alembic/versions/*).
+Créez une révision après avoir défini vos modèles :
+  alembic revision --autogenerate -m "init schema"
+Puis appliquez-la :
+  alembic upgrade head
