@@ -1,5 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.api.deps import get_org_id
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+
+from app.api.deps import get_org_id, get_db, get_current_user
+from app.models.client import Client
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -11,11 +15,15 @@ def create_client(org: str = Depends(get_org_id)):
     raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement create_client")
 
 @router.get("")
-def list_clients(q: str | None = None, limit: int = 50, offset: int = 0, org: str = Depends(get_org_id)):
+async def list_clients(q: str | None = None, limit: int = 50, offset: int = 0, org: str = Depends(get_org_id),
+                 current_user = Depends(get_current_user),
+                 db: AsyncSession = Depends(get_db)):
     """Lister clients de l'org (pagination & filtre q).
     TODO: requête SQL (limit/offset), recherche q (au choix: name/email), retour liste (+ total si voulu).
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement list_clients")
+    result = await db.execute(select(Client).filter(Client.org_id == org))
+    clients = result.scalars().all()
+    return clients
 
 @router.get("/{client_id}")
 def get_client(client_id: int, org: str = Depends(get_org_id)):

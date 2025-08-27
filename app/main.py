@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.security import SecurityHeadersMiddleware
-from app.api.routers import health, clients, technicians, interventions, events
+from app.api.routers import health, clients, technicians, interventions, events, auth
 
 app = FastAPI(title=settings.APP_NAME)
 
@@ -18,6 +18,7 @@ app.add_middleware(
 )
 
 # Routers
+app.include_router(auth.router)
 app.include_router(health.router)
 app.include_router(clients.router)
 app.include_router(technicians.router)
