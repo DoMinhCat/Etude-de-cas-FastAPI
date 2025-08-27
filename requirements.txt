@@ -7,3 +7,5 @@ alembic
 pytest
 psycopg
 psycopg[binary]
+python-jose[cryptography]
+passlib[bcrypt]

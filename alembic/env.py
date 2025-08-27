@@ -2,11 +2,19 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, pool
 
+import sys
+import os
+
+# add project root (the folder containing app/ and alembic/)
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from app.core.config import settings
 from app.db.base import Base
 
 # IMPORTANT: importez vos modèles ici quand vous les créez, ex:
 # from app.models import client, technician, intervention, event  # noqa: F401
+
+from app.models import client, technician, intervention, event, organisation
 
 config = context.config
 

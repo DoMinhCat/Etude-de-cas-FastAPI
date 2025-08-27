@@ -9,4 +9,4 @@ def get_org_id(x_org_id: str | None = Header(default=None, alias="X-Org-ID")) ->
     return x_org_id
 
 # Point d'extension pour la DB (session SQLAlchemy), à brancher quand vous implémentez.
-# from app.db.session import get_db
+from app.db.session import get_db
