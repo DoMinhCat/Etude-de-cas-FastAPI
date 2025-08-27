@@ -1,3 +1,23 @@
 # TODO: modèle SQLAlchemy "Technician"
 # - Rattaché à une organisation (org_id).
 # - Unicité éventuelle (email/org).
+
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import relationship
+from app.db.base import Base
+
+class Technician(Base):
+    __tablename__ = "technicians"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    email = Column(String, nullable=False)
+    name = Column(String, nullable=True)
+
+    org_id = Column(Integer, ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False)
+
+    organisation = relationship("Organisation", back_populates="technicians")
+    interventions = relationship("Intervention", back_populates="technician", passive_deletes=True)
+
+    __table_args__ = (
+        UniqueConstraint("email", "org_id", name="uq_technician_email_org"),
+    )
