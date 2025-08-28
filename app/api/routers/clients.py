@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_
 
 from app.api.deps import get_org_id, get_db, get_current_user
 from app.models.client import Client
-from app.schemas.client import PaginatedClient, ClientOut, CreateClient
+from app.schemas.client import PaginatedClient, ClientOut, CreateClient, PatchClient
 from app.core.security import hash_password
 
 router = APIRouter(prefix="/clients", tags=["clients"])
@@ -116,21 +116,79 @@ def get_client(
     client = db.execute(query).scalar_one_or_none()
 
     if not client:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Client avec id {client_id} non trouvé / non existe dans votre organisation.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Client avec id {client_id} introuvable dans votre organisation.")
     
     return client
 
-
-
-@router.patch("/{client_id}")
-def update_client(client_id: int, org: str = Depends(get_org_id)):
+@router.patch("/{client_id}", status_code=status.HTTP_200_OK, response_model=ClientOut)
+def update_client(
+    client_id: int, 
+    patch_data: PatchClient,
+    db: Session = Depends(get_db),
+    current_user: Client = Depends(get_current_user)
+    ):
     """PATCH partiel client.
     TODO: schéma PATCH, appliquer champs présents, validations.
+    NOTE: all provided fields must be filled in with their original values if no change is wanted
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement update_client")
+    
+    client = db.execute(
+        select(Client).filter(Client.id == client_id, Client.org_id == current_user.org_id)
+    ).scalars().first()
+
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Client avec id {client_id} introuvable dans votre organisation.")
+    
+    if patch_data.username and patch_data.username.lower() != client.username.lower():
+        exists = db.execute(
+            select(Client).filter(
+                Client.org_id == current_user.org_id,
+                func.lower(Client.username) == patch_data.username.lower()
+            )
+        ).scalars().first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Cet username est déjà inscrit.")
+
+    if patch_data.email and patch_data.email.lower() != client.email.lower():
+        exists = db.execute(
+            select(Client).filter(
+                Client.org_id == current_user.org_id,
+                func.lower(Client.email) == patch_data.email.lower()
+            )
+        ).scalars().first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Cette adresse email est déjà inscrite.")
+
+    if patch_data.phone and patch_data.phone != client.phone:
+        exists = db.execute(
+            select(Client).filter(
+                Client.org_id == current_user.org_id,
+                Client.phone == patch_data.phone
+            )
+        ).scalars().first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Ce numéro de téléphone est déjà utilisé.")
+
+    for field, value in patch_data.model_dump(exclude_unset=True).items():
+        setattr(client, field, value)
+
+    try:
+        db.commit()
+        db.refresh(client)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur serveur imprévue lors de la mise à jour du client."
+        )
+    
+    return ClientOut.model_validate(client, from_attributes=True)
 
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_client(client_id: int, org: str = Depends(get_org_id)):
+def delete_client(
+    client_id: int, 
+    db: Session = Depends(get_db)
+    ):
     """Supprimer client.
     TODO: soft-delete (deleted_at) recommandé OU hard delete (documentez), vérifier appartenance org.
     """
