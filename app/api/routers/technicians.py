@@ -8,6 +8,7 @@ from app.schemas.tech import TechOut, CreateTech, PaginatedTech, PatchTech
 from app.models.technician import Technician
 from app.models.organisation import Organisation
 from app.models.client import Client
+from app.core.security import hash_password
 
 router = APIRouter(prefix="/technicians", tags=["technicians"])
 
@@ -32,16 +33,22 @@ def create_technician(
     if db_tech:
         raise HTTPException(status_code=400, detail="Cette adresse email est déjà inscrite. Veuillez choisir une autre adresse.")
 
-    tech_to_add = Technician(name=new_tech.name, email=new_tech.email, org_id=current_user.org_id)
+    check_query = query.filter(func.lower(Technician.username) == new_tech.username.lower())
+    db_tech = db.execute(check_query).scalars().first()
+    if db_tech:
+        raise HTTPException(status_code=400, detail="Cette username est déjà inscrite. Veuillez choisir un autre username.")
+
+    hashed_password = hash_password(new_tech.password)
+    tech_to_add = Technician(name=new_tech.name, email=new_tech.email, org_id=current_user.org_id, username=new_tech.username, hashed_password=new_tech.password)
     try:
         db.add(tech_to_add)
         db.commit()
         db.refresh(tech_to_add)
-    except Exception:
+    except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erreur serveur imprévue lors de la création du technicien."
+            detail=f"Erreur serveur imprévue lors de la création du technicien. {e}"
         )
     
     return {"message": f"Nouveau technicien '{new_tech.name}' créé avec succès."}
@@ -90,7 +97,7 @@ def list_technicians(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Aucun technicien trouvé pour votre organisation.")
     
     techniciens = [
-        TechOut(id=row.Technician.id, name=row.Technician.name, email=row.Technician.email, organisation=row.org_name, created_at=row.Technician.created_at, deleted_at=row.Technician.deleted_at)
+        TechOut(id=row.Technician.id, name=row.Technician.name, email=row.Technician.email, username=row.Technician.username, organisation=row.org_name, created_at=row.Technician.created_at, deleted_at=row.Technician.deleted_at)
         for row in rows
     ]
     return PaginatedTech(
@@ -122,6 +129,7 @@ def get_technician(
         id=row.Technician.id,
         name=row.Technician.name,
         email=row.Technician.email,
+        username=row.Technician.username,
         organisation=row.org_name,
         created_at=row.Technician.created_at,
         deleted_at=row.Technician.deleted_at
@@ -156,6 +164,16 @@ def update_technician(
         ).scalars().first()
         if exists:
             raise HTTPException(status_code=409, detail="Cette adresse email est déjà inscrite. Veuillez choisir une autre adresse.")
+    
+    if patch_data.username and patch_data.username.lower() != tech.username.lower():
+        exists = db.execute(
+            select(Technician).filter(
+                Technician.org_id == current_user.org_id,
+                func.lower(Technician.username) == patch_data.username.lower()
+            )
+        ).scalars().first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Cet username est déjà inscrit. Veuillez choisir un autre username.")
         
     for field, value in patch_data.model_dump(exclude_unset=True).items():
         setattr(tech, field, value)
@@ -179,6 +197,7 @@ def update_technician(
         id=row.Technician.id,
         name=row.Technician.name,
         email=row.Technician.email,
+        username=row.Technician.username,
         organisation=row.org_name,
         created_at=row.Technician.created_at,
         deleted_at=row.Technician.deleted_at

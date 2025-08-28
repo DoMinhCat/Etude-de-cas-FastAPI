@@ -6,6 +6,7 @@ class TechOut(BaseModel):
     id: int
     name: str
     email: EmailStr
+    username: str
     organisation: str
     created_at: datetime
     deleted_at: Optional[datetime]
@@ -25,7 +26,10 @@ class PaginatedTech(BaseModel):
 class CreateTech(BaseModel):
     name: str
     email: EmailStr
+    username: str
+    password: str
 
 class PatchTech(BaseModel):
     name: Optional[str]
     email: Optional[EmailStr]
+    username: Optional[str]

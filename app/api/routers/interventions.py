@@ -1,23 +1,36 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.api.deps import get_org_id
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user, get_role, get_db, get_org_id
+from app.models.intervention import Intervention
+from app.models.client import Client
+from app.models.technician import Technician
+# from app.schemas.intervention import CreateItem
 
 router = APIRouter(prefix="/items", tags=["items"])
 
+default_limit = 50
+max_limit = 200
+
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_item(org: str = Depends(get_org_id)):
+def create_item(
+    # new_item: CreateItem,
+    current_user: Client = Depends(get_current_user),
+    current_role = Depends(get_role("tech")),
+    db: Session = Depends(get_db)
+):
     """Créer un item (intervention/ticket) pour un client de l'org.
     TODO: payload (client_id, title...), vérifier que le client ∈ org, statut initial (enum libre), insert.
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement create_item")
 
 @router.get("")
 def list_items(
     status_eq: str | None = None,
     client_id: int | None = None,
     q: str | None = None,
-    limit: int = 50,
+    limit: int = default_limit,
     offset: int = 0,
-    org: str = Depends(get_org_id),
+    
 ):
     """Lister items (org).
     TODO: filtres (status, client_id, q), pagination.
