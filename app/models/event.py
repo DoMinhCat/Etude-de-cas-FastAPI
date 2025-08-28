@@ -10,7 +10,6 @@ import enum
 from app.db.base import Base
 
 class EventType(str, enum.Enum):
-    CREATED = "created"
     STARTED = "started"
     UPDATED = "updated"
     COMPLETED = "completed"

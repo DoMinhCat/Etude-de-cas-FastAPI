@@ -37,3 +37,7 @@ class PaginatedItem(BaseModel):
     limit: int
     offset: int
     interventions: List[ItemOut]
+
+class PatchItem(BaseModel):
+    status: Optional[InterventionStatus] = None
+    description: Optional[str] = None

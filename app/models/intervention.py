@@ -25,7 +25,7 @@ class Intervention(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
-    organisation_id = Column(Integer, ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False)
+    org_id = Column(Integer, ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False)
     technician_id = Column(Integer, ForeignKey("technicians.id", ondelete="RESTRICT"), nullable=False)
 
     client = relationship("Client", back_populates="interventions")

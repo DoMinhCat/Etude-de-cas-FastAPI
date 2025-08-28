@@ -143,7 +143,7 @@ def update_technician(
     patch_data: PatchTech,
     db: Session = Depends(get_db),
     current_user: Client = Depends(get_current_user),
-    current_role = Depends(get_role("tech")),
+    current_role = Depends(get_role("tech"))
     ):
     """PATCH technicien."""
 
