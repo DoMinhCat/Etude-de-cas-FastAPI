@@ -2,9 +2,10 @@ from pydantic import BaseModel, EmailStr
 from typing import List
 
 class TechOut(BaseModel):
+    id: int
     name: str
     email: EmailStr
-    org_id: int
+    organisation: str
 
     class Config:
         model_config = {

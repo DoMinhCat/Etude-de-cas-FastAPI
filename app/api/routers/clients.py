@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from app.api.deps import get_db, get_current_user
 from app.models.client import Client
+from app.models.organisation import Organisation
 from app.schemas.client import PaginatedClient, ClientOut, CreateClient, PatchClient
 from app.core.security import hash_password
 
@@ -72,7 +73,11 @@ def list_clients(
     if offset < 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Offset ne peut pas être négatif.")
     
-    query = select(Client).filter(Client.org_id == current_user.org_id)
+    query = (
+    select(Client, Organisation.name.label("org_name"))
+    .join(Organisation, Client.org_id == Organisation.id)
+    .filter(Client.org_id == current_user.org_id)   
+    )
 
     # Filtre
     if q:
@@ -89,18 +94,22 @@ def list_clients(
     query = query.limit(limit).offset(offset)
 
     try:
-        clients = db.execute(query).scalars().all()
+        rows = db.execute(query).all()
     except Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erreur serveur imprévue.")
     
-    if not clients:
+    if not rows:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Aucun client trouvé pour votre organisation.")
     
+    clients = [
+        ClientOut(id=row.Client.id, first_name=row.Client.first_name, last_name=row.Client.last_name, username=row.Client.username, email=row.Client.email, phone=row.Client.phone, organisation=row.org_name, created_at=row.Client.created_at, deleted_at=row.Client.deleted_at)
+        for row in rows
+    ]
     return PaginatedClient(
         total_result=total,
         limit=limit,
         offset=offset,
-        clients=[ClientOut.model_validate(c, from_attributes=True) for c in clients]
+        clients=clients
     )
 
 @router.get("/{client_id}", status_code=status.HTTP_200_OK, response_model=ClientOut)
@@ -113,12 +122,27 @@ def get_client(
     TODO: SELECT + 404 si introuvable/hors org.
     """
     
-    query = select(Client).filter(current_user.org_id == Client.org_id, client_id == Client.id)
-    client = db.execute(query).scalar_one_or_none()
+    query = (
+    select(Client, Organisation.name.label("org_name"))
+    .join(Organisation, Client.org_id == Organisation.id)
+    .filter(Client.org_id == current_user.org_id, client_id == Client.id)   
+    )
+    row = db.execute(query).first()
 
-    if not client:
+    if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Client avec id {client_id} introuvable dans votre organisation.")
     
+    client = ClientOut(
+        id=row.Client.id,
+        first_name=row.Client.first_name,
+        last_name=row.Client.last_name,
+        username=row.Client.username,
+        email=row.Client.email,
+        phone=row.Client.phone,
+        organisation=row.org_name,
+        created_at=row.Client.created_at,
+        deleted_at=row.Client.deleted_at
+    )
     return client
 
 @router.patch("/{client_id}", status_code=status.HTTP_200_OK, response_model=ClientOut)

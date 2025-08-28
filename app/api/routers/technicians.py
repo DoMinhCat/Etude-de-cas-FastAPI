@@ -6,6 +6,7 @@ from app.api.deps import get_org_id
 from app.api.deps import get_current_user, get_db
 from app.schemas.tech import TechOut, CreateTech, PaginatedTech
 from app.models.technician import Technician
+from app.models.organisation import Organisation
 from app.models.client import Client
 
 router = APIRouter(prefix="/technicians", tags=["technicians"])
@@ -60,7 +61,11 @@ def list_technicians(
     if offset < 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Offset ne peut pas être négatif.")
     
-    query = select(Technician).filter(Technician.org_id == current_user.org_id)
+    query = (
+    select(Technician, Organisation.name.label("org_name"))
+    .join(Organisation, Technician.org_id == Organisation.id)
+    .filter(Technician.org_id == current_user.org_id)   
+    )
 
     # Filtre
     if q:
@@ -76,24 +81,49 @@ def list_technicians(
     query = query.limit(limit).offset(offset)
     
     try:
-        techniciens = db.execute(query).scalars().all()
+        rows = db.execute(query).all()
     except Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erreur serveur imprévue.")
     
-    if not techniciens:
+    if not rows:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Aucun technicien trouvé pour votre organisation.")
     
+    techniciens = [
+        TechOut(name=row.Technician.name, email=row.Technician.email, organisation=row.org_name)
+        for row in rows
+    ]
     return PaginatedTech(
         total_result=total,
         limit=limit,
         offset=offset,
-        techniciens=[TechOut.model_validate(t, from_attributes=True) for t in techniciens]
+        techniciens=techniciens
     )
     
-@router.get("/{tech_id}")
-def get_technician(tech_id: int, org: str = Depends(get_org_id)):
+@router.get("/{tech_id}", status_code=status.HTTP_200_OK, response_model=TechOut)
+def get_technician(
+    tech_id: int,
+    current_user: Client = Depends(get_current_user),
+    db: Session = Depends(get_db) 
+    ):
     """Récupérer technicien (org)."""
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement get_technician")
+
+    query = (
+    select(Technician, Organisation.name.label("org_name"))
+    .join(Organisation, Technician.org_id == Organisation.id)
+    .filter(current_user.org_id == Technician.org_id, tech_id == Technician.id)   
+    )
+    row = db.execute(query).first()
+
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Client avec id {tech_id} introuvable dans votre organisation.")
+    
+    technicien = TechOut(
+        id=row.Technician.id,
+        name=row.Technician.name,
+        email=row.Technician.email,
+        organisation=row.org_name
+    )
+    return technicien
 
 @router.patch("/{tech_id}")
 def update_technician(tech_id: int, org: str = Depends(get_org_id)):

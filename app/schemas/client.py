@@ -9,6 +9,7 @@ class ClientOut(BaseModel):
     username: str
     email: EmailStr
     phone: Optional[str]
+    organisation: str
     created_at: datetime
     deleted_at: Optional[datetime]
 
