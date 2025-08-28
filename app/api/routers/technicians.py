@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_
+from datetime import timezone, datetime
 
 from app.api.deps import get_org_id
 from app.api.deps import get_current_user, get_db
@@ -115,13 +116,15 @@ def get_technician(
     row = db.execute(query).first()
 
     if not row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Client avec id {tech_id} introuvable dans votre organisation.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Technicien avec id {tech_id} introuvable dans votre organisation.")
     
     technicien = TechOut(
         id=row.Technician.id,
         name=row.Technician.name,
         email=row.Technician.email,
-        organisation=row.org_name
+        organisation=row.org_name,
+        created_at=row.Technician.created_at,
+        deleted_at=row.Technician.deleted_at
     )
     return technicien
 
@@ -175,10 +178,44 @@ def update_technician(
         id=row.Technician.id,
         name=row.Technician.name,
         email=row.Technician.email,
-        organisation=row.org_name
+        organisation=row.org_name,
+        created_at=row.Technician.created_at,
+        deleted_at=row.Technician.deleted_at
     )
 
 @router.delete("/{tech_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_technician(tech_id: int, org: str = Depends(get_org_id)):
+def delete_technician(
+    tech_id: int, 
+    db: Session = Depends(get_db),
+    current_user: Client = Depends(get_current_user)
+    ):
     """Supprimer technicien (soft/hard)."""
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement delete_technician")
+    
+    tech = db.execute(
+        select(Technician).filter(Technician.id == tech_id, Technician.org_id == current_user.org_id)
+    ).scalars().first()
+
+    if not tech:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Technicien avec id {tech_id} introuvable dans votre organisation."
+        )
+    
+    if tech.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Technicien déjà supprimé."
+        )
+    
+    tech.deleted_at = datetime.now(timezone.utc)
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur serveur imprévue lors de la suppression du technicien."
+        )
+
+    return {"message" : "Technicien supprimé avec succès."}
