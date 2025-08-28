@@ -19,7 +19,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         resp.headers["Permissions-Policy"] = "geolocation=()"
 
         resp.headers["X-Frame-Options"] = "DENY"
-        resp.headers["Content-Security-Policy"] = "default-src 'self';"
         resp.headers["X-XSS-Protection"] = "1; mode=block"
         return resp
 
