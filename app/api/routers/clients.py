@@ -43,7 +43,7 @@ def create_client(
         raise HTTPException(status_code=400, detail="Ce numéro de téléphone est déjà inscrit. Veuillez choisir un autre numéro.")
     
     hashed_password = hash_password(new_user.password)
-    user_to_add = Client(first_name=new_user.first_name, last_name=new_user.last_name, username=new_user.username, hashed_password=hashed_password, email=new_user.email, phone=new_user.phone, org_id=current_user.org_id)
+    user_to_add = Client(first_name=new_user.first_name, last_name=new_user.last_name, username=new_user.username, hashed_password = hashed_password, email=new_user.email, phone=new_user.phone, org_id=current_user.org_id)
     
     try:
         db.add(user_to_add)

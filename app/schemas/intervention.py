@@ -9,8 +9,8 @@ class InterventionStatus(str, enum.Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
-# class CreateItem(BaseModel):
-#     status = 
-#     description= = Optional[str]
-#     created_at = 
-#     update
+class CreateItem(BaseModel):
+    status: Optional[InterventionStatus] = InterventionStatus.PENDING
+    description: Optional[str] = None
+    client_id: int
+    technician_id: int
