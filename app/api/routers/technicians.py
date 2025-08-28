@@ -4,11 +4,14 @@ from sqlalchemy import select, func, or_
 
 from app.api.deps import get_org_id
 from app.api.deps import get_current_user, get_db
-from app.schemas.tech import TechOut, CreateTech
+from app.schemas.tech import TechOut, CreateTech, PaginatedTech
 from app.models.technician import Technician
 from app.models.client import Client
 
 router = APIRouter(prefix="/technicians", tags=["technicians"])
+
+default_limit = 50
+max_limit = 200
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_technician(
@@ -41,13 +44,52 @@ def create_technician(
     
     return {"message": f"Nouveau technicien '{new_tech.name}' créé avec succès."}
 
-@router.get("")
-def list_technicians(q: str | None = None, limit: int = 50, offset: int = 0, org: str = Depends(get_org_id)):
+@router.get("", status_code=status.HTTP_200_OK, response_model=PaginatedTech)
+def list_technicians(
+    q: str | None = None, 
+    limit: int = default_limit, 
+    offset: int = 0, 
+    current_user: Client = Depends(get_current_user),
+    db: Session = Depends(get_db)):
     """Lister techniciens (org).
     TODO: filtre q (nom/email), pagination.
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement list_technicians")
 
+    if limit < 1 or limit > max_limit:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Limit doit être entre 1 et {max_limit}.")
+    if offset < 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Offset ne peut pas être négatif.")
+    
+    query = select(Technician).filter(Technician.org_id == current_user.org_id)
+
+    # Filtre
+    if q:
+        search = f"%{q.lower()}%"
+        query = query.filter(
+            or_(
+                func.lower(Technician.name).like(search),
+                func.lower(Technician.email).like(search)
+            )
+        )
+    # Total number of results before offset or limit
+    total = db.execute(select(func.count()).select_from(query.subquery())).scalar()
+    query = query.limit(limit).offset(offset)
+    
+    try:
+        techniciens = db.execute(query).scalars().all()
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erreur serveur imprévue.")
+    
+    if not techniciens:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Aucun technicien trouvé pour votre organisation.")
+    
+    return PaginatedTech(
+        total_result=total,
+        limit=limit,
+        offset=offset,
+        techniciens=[TechOut.model_validate(t, from_attributes=True) for t in techniciens]
+    )
+    
 @router.get("/{tech_id}")
 def get_technician(tech_id: int, org: str = Depends(get_org_id)):
     """Récupérer technicien (org)."""

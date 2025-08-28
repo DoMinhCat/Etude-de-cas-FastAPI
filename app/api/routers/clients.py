@@ -94,7 +94,7 @@ def list_clients(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erreur serveur imprévue.")
     
     if not clients:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Aucun client trouvé pour cette organisation.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Aucun client trouvé pour votre organisation.")
     
     return PaginatedClient(
         total_result=total,
