@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_
-from typing import List
 
 from app.api.deps import get_org_id, get_db, get_current_user
 from app.models.client import Client
-from app.schemas.client import PaginatedClient, ClientOut
+from app.schemas.client import PaginatedClient, ClientOut, CreateClient
+from app.core.security import hash_password
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -13,11 +13,49 @@ default_limit = 50
 max_limit = 200
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_client(org: str = Depends(get_org_id)):
+def create_client(
+    new_user: CreateClient,
+    current_user: Client = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Créer un client (org courante).
     TODO: définir schémas Pydantic, insérer en base (filtré org), gérer validations & erreurs.
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement create_client")
+
+    query = select(Client).filter(Client.org_id == current_user.org_id)
+
+    check_query = query.filter(func.lower(Client.username) == new_user.username.lower())
+    db_user = db.execute(check_query).scalars().first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Cet username est déjà inscrit. Veuillez choisir un autre username.")
+    
+    check_query = query.filter(func.lower(Client.email) == new_user.email.lower())
+    db_user = db.execute(check_query).scalars().first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Cette adresse email est déjà inscrite. Veuillez choisir une autre adresse.")
+    
+    check_query = query.filter(func.lower(Client.phone) == new_user.phone)
+    db_user = db.execute(check_query).scalars().first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Ce numéro de téléphone est déjà inscrit. Veuillez choisir un autre numéro.")
+    
+    hashed_password = hash_password(new_user.password)
+    user_to_add = Client(first_name=new_user.first_name, last_name=new_user.last_name, username=new_user.username, hashed_password=hashed_password, email=new_user.email, phone=new_user.phone, org_id=current_user.org_id)
+    
+    try:
+        db.add(user_to_add)
+        db.commit()
+        db.refresh(user_to_add)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur serveur imprévue lors de la création du client."
+        )
+    return {"message": f"Nouveau client '{new_user.username}' créé avec succès."}
+
+
+    
 
 @router.get("", status_code=status.HTTP_200_OK, response_model=PaginatedClient)
 def list_clients(

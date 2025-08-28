@@ -22,3 +22,11 @@ class PaginatedClient(BaseModel):
     limit: int
     offset: int
     clients: List[ClientOut]
+
+class CreateClient(BaseModel):
+    first_name: str
+    last_name: str
+    username: str
+    password: str
+    email: str
+    phone: Optional[str]
