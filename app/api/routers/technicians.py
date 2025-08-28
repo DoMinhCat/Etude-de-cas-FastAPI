@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_
 from datetime import timezone, datetime
 
-from app.api.deps import get_org_id
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, get_role
 from app.schemas.tech import TechOut, CreateTech, PaginatedTech, PatchTech
 from app.models.technician import Technician
 from app.models.organisation import Organisation
@@ -19,6 +18,7 @@ max_limit = 200
 def create_technician(
     new_tech: CreateTech,
     current_user: Client = Depends(get_current_user),
+    current_role = Depends(get_role("tech")),
     db: Session = Depends(get_db)
 ):
     """Créer technicien (org).
@@ -133,7 +133,8 @@ def update_technician(
     tech_id: int, 
     patch_data: PatchTech,
     db: Session = Depends(get_db),
-    current_user: Client = Depends(get_current_user)
+    current_user: Client = Depends(get_current_user),
+    current_role = Depends(get_role("tech")),
     ):
     """PATCH technicien."""
 
@@ -183,11 +184,12 @@ def update_technician(
         deleted_at=row.Technician.deleted_at
     )
 
-@router.delete("/{tech_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{tech_id}", status_code=status.HTTP_200_OK)
 def delete_technician(
     tech_id: int, 
     db: Session = Depends(get_db),
-    current_user: Client = Depends(get_current_user)
+    current_user: Client = Depends(get_current_user),
+    current_role = Depends(get_role("tech"))
     ):
     """Supprimer technicien (soft/hard)."""
     

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_
 from datetime import datetime, timezone
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, get_role
 from app.models.client import Client
 from app.models.organisation import Organisation
 from app.schemas.client import PaginatedClient, ClientOut, CreateClient, PatchClient
@@ -18,6 +18,7 @@ max_limit = 200
 def create_client(
     new_user: CreateClient,
     current_user: Client = Depends(get_current_user),
+    current_role = Depends(get_role("tech")),
     db: Session = Depends(get_db)
 ):
     """Créer un client (org courante).
@@ -62,6 +63,7 @@ def list_clients(
     limit: int = default_limit,
     offset: int = 0,
     current_user: Client = Depends(get_current_user),
+    current_role = Depends(get_role("tech")),
     db: Session = Depends(get_db)
 ):
     """Lister clients de l'org (pagination & filtre q).
@@ -116,6 +118,7 @@ def list_clients(
 def get_client(
     client_id: int, 
     current_user: Client = Depends(get_current_user),
+    current_role = Depends(get_role("tech")),
     db: Session = Depends(get_db)
     ):
     """Récupérer un client (filtré org).
@@ -150,6 +153,7 @@ def update_client(
     client_id: int, 
     patch_data: PatchClient,
     db: Session = Depends(get_db),
+    current_role = Depends(get_role("tech")),
     current_user: Client = Depends(get_current_user)
 ):
     """PATCH partiel client."""
@@ -228,7 +232,8 @@ def update_client(
 def delete_client(
     client_id: int, 
     db: Session = Depends(get_db),
-    current_user: Client = Depends(get_current_user)
+    current_user: Client = Depends(get_current_user),
+    current_role = Depends(get_role("tech"))
     ):
     """Supprimer client.
     TODO: soft-delete (deleted_at) recommandé OU hard delete (documentez), vérifier appartenance org.

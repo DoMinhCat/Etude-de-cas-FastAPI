@@ -14,6 +14,8 @@ class Technician(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     email = Column(String, nullable=False)
     name = Column(String, nullable=True)
+    username = Column(String, nullable=False, unique=True)
+    hashed_password = Column(String, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc)) 
 
