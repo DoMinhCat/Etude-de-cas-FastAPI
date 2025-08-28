@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_
+from datetime import datetime, timezone
 
-from app.api.deps import get_org_id, get_db, get_current_user
+from app.api.deps import get_db, get_current_user
 from app.models.client import Client
 from app.schemas.client import PaginatedClient, ClientOut, CreateClient, PatchClient
 from app.core.security import hash_password
@@ -139,6 +140,9 @@ def update_client(
     if not client:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Client avec id {client_id} introuvable dans votre organisation.")
     
+    if client.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Client avec id {client_id} est déjà supprimé.")
+
     if patch_data.username and patch_data.username.lower() != client.username.lower():
         exists = db.execute(
             select(Client).filter(
@@ -184,12 +188,41 @@ def update_client(
     
     return ClientOut.model_validate(client, from_attributes=True)
 
-@router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{client_id}", status_code=status.HTTP_200_OK)
 def delete_client(
     client_id: int, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Client = Depends(get_current_user)
     ):
     """Supprimer client.
     TODO: soft-delete (deleted_at) recommandé OU hard delete (documentez), vérifier appartenance org.
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement delete_client")
+    
+    client = db.execute(
+        select(Client).filter(Client.id == client_id, Client.org_id == current_user.org_id)
+    ).scalars().first()
+
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Client avec id {client_id} introuvable dans votre organisation."
+        )
+    
+    if client.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Client déjà supprimé."
+        )
+    
+    client.deleted_at = datetime.now(timezone.utc)
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur serveur imprévue lors de la suppression du client."
+        )
+
+    return {"message" : "Client supprimé avec succès."}
