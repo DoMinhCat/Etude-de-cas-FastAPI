@@ -26,11 +26,11 @@ class Event(Base):
 
     intervention_id = Column(Integer, ForeignKey("interventions.id", ondelete="CASCADE"), nullable=False)
     organisation_id = Column(Integer, ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False)
-    created_by = Column(Integer, ForeignKey("technicians.id", ondelete="SET NULL"), nullable=True)
+    technician_id = Column(Integer, ForeignKey("technicians.id", ondelete="SET NULL"), nullable=True)
 
     intervention = relationship("Intervention", back_populates="events")
     organisation = relationship("Organisation", back_populates="events")
-    created_by_technician = relationship("Technician", foreign_keys=[created_by])
+    created_by_technician = relationship("Technician", foreign_keys=[technician_id])
 
     __table_args__ = (
         Index("ix_event_intervention_created", "intervention_id", "created_at"),

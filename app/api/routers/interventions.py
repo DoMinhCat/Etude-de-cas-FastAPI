@@ -54,7 +54,7 @@ def create_item(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur serveur imprévue lors de la création de l'intervention. {e}"
+            detail="Erreur serveur imprévue lors de la création de l'intervention."
         )
     
     return {"message": f"Nouvelle intervention id : {item.id} créée avec succès."}
