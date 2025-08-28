@@ -1,11 +1,14 @@
 from pydantic import BaseModel, EmailStr
-from typing import List
+from typing import List, Optional
+from datetime import datetime
 
 class TechOut(BaseModel):
     id: int
     name: str
     email: EmailStr
     organisation: str
+    created_at: datetime
+    deleted_at: Optional[datetime]
 
     class Config:
         model_config = {
@@ -22,3 +25,7 @@ class PaginatedTech(BaseModel):
 class CreateTech(BaseModel):
     name: str
     email: EmailStr
+
+class PatchTech(BaseModel):
+    name: Optional[str]
+    email: Optional[EmailStr]

@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_
 
 from app.api.deps import get_org_id
 from app.api.deps import get_current_user, get_db
-from app.schemas.tech import TechOut, CreateTech, PaginatedTech
+from app.schemas.tech import TechOut, CreateTech, PaginatedTech, PatchTech
 from app.models.technician import Technician
 from app.models.organisation import Organisation
 from app.models.client import Client
@@ -89,7 +89,7 @@ def list_technicians(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Aucun technicien trouvé pour votre organisation.")
     
     techniciens = [
-        TechOut(name=row.Technician.name, email=row.Technician.email, organisation=row.org_name)
+        TechOut(id=row.Technician.id, name=row.Technician.name, email=row.Technician.email, organisation=row.org_name, created_at=row.Technician.created_at, deleted_at=row.Technician.deleted_at)
         for row in rows
     ]
     return PaginatedTech(
@@ -125,10 +125,58 @@ def get_technician(
     )
     return technicien
 
-@router.patch("/{tech_id}")
-def update_technician(tech_id: int, org: str = Depends(get_org_id)):
+@router.patch("/{tech_id}", status_code=status.HTTP_200_OK, response_model=TechOut)
+def update_technician(
+    tech_id: int, 
+    patch_data: PatchTech,
+    db: Session = Depends(get_db),
+    current_user: Client = Depends(get_current_user)
+    ):
     """PATCH technicien."""
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement update_technician")
+
+    tech = db.execute(
+        select(Technician).filter(Technician.id == tech_id, Technician.org_id == current_user.org_id)
+    ).scalars().first()
+
+    if not tech:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenchnicien avec id {tech_id} introuvable dans votre organisation.")
+    if tech.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Tenchnicien avec id {tech_id} est déjà supprimé.")
+    
+    if patch_data.email and patch_data.email.lower() != tech.email.lower():
+        exists = db.execute(
+            select(Technician).filter(
+                Technician.org_id == current_user.org_id,
+                func.lower(Technician.email) == patch_data.email.lower()
+            )
+        ).scalars().first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Cette adresse email est déjà inscrite. Veuillez choisir une autre adresse.")
+        
+    for field, value in patch_data.model_dump(exclude_unset=True).items():
+        setattr(tech, field, value)
+    
+    try:
+        db.commit()
+        db.refresh(tech)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur serveur imprévue lors de la mise à jour du technicien."
+        )
+    
+    row = db.execute(
+        select(Technician, Organisation.name.label("org_name"))
+        .join(Organisation, Technician.org_id == Organisation.id)
+        .filter(Technician.id == tech.id)
+    ).first()
+    return TechOut(
+        id=row.Technician.id,
+        name=row.Technician.name,
+        email=row.Technician.email,
+        organisation=row.org_name
+    )
 
 @router.delete("/{tech_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_technician(tech_id: int, org: str = Depends(get_org_id)):

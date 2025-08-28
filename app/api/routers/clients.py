@@ -151,19 +151,15 @@ def update_client(
     patch_data: PatchClient,
     db: Session = Depends(get_db),
     current_user: Client = Depends(get_current_user)
-    ):
-    """PATCH partiel client.
-    TODO: schéma PATCH, appliquer champs présents, validations.
-    NOTE: all provided fields must be filled in with their original values if no change is wanted
-    """
-    
+):
+    """PATCH partiel client."""
+
     client = db.execute(
         select(Client).filter(Client.id == client_id, Client.org_id == current_user.org_id)
     ).scalars().first()
 
     if not client:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Client avec id {client_id} introuvable dans votre organisation.")
-    
     if client.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Client avec id {client_id} est déjà supprimé.")
 
@@ -175,7 +171,7 @@ def update_client(
             )
         ).scalars().first()
         if exists:
-            raise HTTPException(status_code=409, detail="Cet username est déjà inscrit.")
+            raise HTTPException(status_code=409, detail="Cet username est déjà inscrit. Veuillez choisir un autre username.")
 
     if patch_data.email and patch_data.email.lower() != client.email.lower():
         exists = db.execute(
@@ -185,7 +181,7 @@ def update_client(
             )
         ).scalars().first()
         if exists:
-            raise HTTPException(status_code=409, detail="Cette adresse email est déjà inscrite.")
+            raise HTTPException(status_code=409, detail="Cette adresse email est déjà inscrite. Veuillez choisir une autre adresse.")
 
     if patch_data.phone and patch_data.phone != client.phone:
         exists = db.execute(
@@ -195,7 +191,7 @@ def update_client(
             )
         ).scalars().first()
         if exists:
-            raise HTTPException(status_code=409, detail="Ce numéro de téléphone est déjà utilisé.")
+            raise HTTPException(status_code=409, detail="Ce numéro de téléphone est déjà utilisé. Veuillez choisir un autre numéro.")
 
     for field, value in patch_data.model_dump(exclude_unset=True).items():
         setattr(client, field, value)
@@ -209,8 +205,24 @@ def update_client(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erreur serveur imprévue lors de la mise à jour du client."
         )
-    
-    return ClientOut.model_validate(client, from_attributes=True)
+
+    row = db.execute(
+        select(Client, Organisation.name.label("org_name"))
+        .join(Organisation, Client.org_id == Organisation.id)
+        .filter(Client.id == client.id)
+    ).first()
+
+    return ClientOut(
+        id=row.Client.id,
+        first_name=row.Client.first_name,
+        last_name=row.Client.last_name,
+        username=row.Client.username,
+        email=row.Client.email,
+        phone=row.Client.phone,
+        organisation=row.org_name,
+        created_at=row.Client.created_at,
+        deleted_at=row.Client.deleted_at
+    )
 
 @router.delete("/{client_id}", status_code=status.HTTP_200_OK)
 def delete_client(
