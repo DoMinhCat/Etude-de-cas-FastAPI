@@ -54,9 +54,6 @@ def create_client(
         )
     return {"message": f"Nouveau client '{new_user.username}' créé avec succès."}
 
-
-    
-
 @router.get("", status_code=status.HTTP_200_OK, response_model=PaginatedClient)
 def list_clients(
     q: str | None = None,
@@ -105,12 +102,25 @@ def list_clients(
         clients=[ClientOut.model_validate(c, from_attributes=True) for c in clients]
     )
 
-@router.get("/{client_id}")
-def get_client(client_id: int, org: str = Depends(get_org_id)):
+@router.get("/{client_id}", status_code=status.HTTP_200_OK, response_model=ClientOut)
+def get_client(
+    client_id: int, 
+    current_user: Client = Depends(get_current_user),
+    db: Session = Depends(get_db)
+    ):
     """Récupérer un client (filtré org).
     TODO: SELECT + 404 si introuvable/hors org.
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement get_client")
+    
+    query = select(Client).filter(current_user.org_id == Client.org_id, client_id == Client.id)
+    client = db.execute(query).scalar_one_or_none()
+
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Client avec id {client_id} non trouvé / non existe dans votre organisation.")
+    
+    return client
+
+
 
 @router.patch("/{client_id}")
 def update_client(client_id: int, org: str = Depends(get_org_id)):
