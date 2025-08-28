@@ -131,10 +131,43 @@ def list_items(
         interventions=items
     )
 
-@router.get("/{item_id}")
-def get_item(item_id: int, org: str = Depends(get_org_id)):
+@router.get("/{item_id}", status_code=status.HTTP_200_OK, response_model=ItemOut)
+def get_item(
+    item_id: int,
+    current_user: Client = Depends(get_current_user),
+    db: Session = Depends(get_db) 
+    ):
     """Récupérer item (org)."""
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Implement get_item")
+    
+    query = (
+    select(
+        Intervention,
+        Organisation.name.label("org_name"),
+        Client.username.label("client_username"),
+        Technician.username.label("technician_username")
+    )
+    .join(Organisation, Intervention.organisation_id == Organisation.id)
+    .join(Client, Intervention.client_id == Client.id)
+    .join(Technician, Intervention.technician_id == Technician.id)
+    .filter(Intervention.organisation_id == current_user.org_id, item_id == Intervention.id)
+    )
+    row = db.execute(query).first()
+
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Technicien avec id {item_id} introuvable dans votre organisation.")
+    
+    item = ItemOut(
+    id=row.Intervention.id,
+    status=row.Intervention.status,
+    description=row.Intervention.description,
+    client_username=row.client_username,
+    technicien_username=row.technician_username,
+    organisation=row.org_name,
+    created_at=row.Intervention.created_at,
+    updated_at=row.Intervention.updated_at,
+    deleted_at=row.Intervention.deleted_at
+    )
+    return item
 
 @router.patch("/{item_id}")
 def update_item(item_id: int, org: str = Depends(get_org_id)):
