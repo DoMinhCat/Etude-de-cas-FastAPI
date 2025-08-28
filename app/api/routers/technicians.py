@@ -59,7 +59,8 @@ def list_technicians(
     limit: int = default_limit, 
     offset: int = 0, 
     current_user: Client = Depends(get_current_user),
-    db: Session = Depends(get_db)):
+    db: Session = Depends(get_db)
+    ):
     """Lister techniciens (org).
     TODO: filtre q (nom/email), pagination.
     """

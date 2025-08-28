@@ -22,6 +22,7 @@ class Intervention(Base):
     description = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
     organisation_id = Column(Integer, ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False)

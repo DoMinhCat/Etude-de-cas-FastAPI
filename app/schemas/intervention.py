@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 import enum
 
 class InterventionStatus(str, enum.Enum):
@@ -14,3 +14,26 @@ class CreateItem(BaseModel):
     description: Optional[str] = None
     client_id: int
     technician_id: int
+
+class ItemOut(BaseModel):
+    id: int
+    status: str
+    description: Optional[str]
+    client_username: str
+    technicien_username: str
+    organisation: str
+    created_at: datetime
+    updated_at: Optional[datetime]
+    deleted_at: Optional[datetime]
+
+    class Config:
+        model_config = {
+            'from_attributes': True,
+            'extra': 'ignore'
+        }
+
+class PaginatedItem(BaseModel):
+    total_result: int
+    limit: int
+    offset: int
+    interventions: List[ItemOut]
