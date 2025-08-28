@@ -1,6 +1,6 @@
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from jose import JWTError
 from sqlalchemy import select, func
 
@@ -12,7 +12,7 @@ from app.db.session import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
         payload = decode_access_token(token)
         username = payload.get("sub")
@@ -22,7 +22,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     except JWTError:
         raise HTTPException(status_code=401, detail="Token invalide ou expiré")
 
-    result = await db.execute(
+    result = db.execute(
         select(Client).filter(func.lower(Client.username) == username.lower())
     )
     user = result.scalars().first()

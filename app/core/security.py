@@ -1,6 +1,6 @@
 from fastapi import Request
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+from jose import jwt
 from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict

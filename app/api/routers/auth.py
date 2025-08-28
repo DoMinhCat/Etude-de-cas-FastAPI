@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
 from app.models.client import Client
@@ -9,10 +10,10 @@ from app.core.security import verify_password, create_access_token
 router = APIRouter(prefix="/auth", tags=["auth"], include_in_schema=False)
 
 @router.post("/login")
-async def login(username: str, password: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Client).filter(func.lower(Client.username) == username.lower()))
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    result = db.execute(select(Client).filter(func.lower(Client.username) == form_data.username.lower()))
     user = result.scalars().first()
-    if not user or not verify_password(password, user.hashed_password):
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Identifiants invalides")
     
     token_data = {"sub": user.username, "org_id": user.org_id}
