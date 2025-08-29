@@ -56,7 +56,7 @@ Accessible to **both** `client` and `tech` roles.
 
 ## API Endpoints
 
-Detailed API documentation is available at [http://localhost:8000/docs](https://www.google.com/search?q=http://localhost:8000/docs "null").
+Detailed API documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ### Status
 
@@ -72,7 +72,7 @@ Detailed API documentation is available at [http://localhost:8000/docs](https://
 
 _Similar endpoints are available for **Technicians** (e.g., `/technicians`, `/technicians/{tech_id}`)._
 
-### Éléments de travail (Interventions)
+### Interventions/tickets
 
 - `POST /items`: Create an intervention (must be linked to a client from the same organization).
 - `GET /items`: List interventions (supports filters by `tech`/`client username`, `statut`, `client id`).
@@ -97,8 +97,8 @@ The API provides clear HTTP status codes for various error scenarios:
 
 - **`400 Bad Request`**: The server cannot process the request due to invalid syntax, missing parameters, or other client-side errors.
 - **`401 Unauthorized`**: The client lacks valid authentication credentials for the target resource. This usually means a missing or invalid JWT token.
-- **`404 Not Found`**: The requested resource could not be found on the server.
-- **`409 Conflict`**: The request could not be completed due to a conflict with the current state of the target resource (e.g., trying to create a resource with a non-unique identifier that already exists).
+- **`404 Not Found`**: The requested resource could not be found on the server/in the current organisation.
+- **`409 Conflict`**: The request could not be completed due to a conflict with the current state of the target resource (e.g., not respecting enum status transition rule).
 - **`500 Internal Server Error`**: An unexpected condition was encountered by the server, preventing it from fulfilling the request.
 
 ## Security
@@ -116,7 +116,7 @@ The API incorporates several security headers to enhance protection:
 - A **technician** is allowed to delete their own account.
 - An **Admin** role can be introduced for additional control and oversight.
 
-### Provided Data for Testing
+### Initial data provided for Testing
 
 - **Clients:**
 
