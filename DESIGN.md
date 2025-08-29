@@ -1,41 +1,40 @@
-## Schéma logique
+## Logical Schema
 
-La base de données repose sur **5 tables principales** :
+The database is based on **5 main tables**:
 
-- **Organisations** : regroupent clients, techniciens, interventions et événements.
-- **Clients** : associés à une organisation et liés à leurs interventions.
-- **Techniciens** : employés d’une organisation, pouvant créer ou réaliser des interventions.
-- **Interventions** : réalisées par un technicien pour un client.
-- **Événements** : étapes ou suivis liés à une intervention.
+- **Organizations**: Group together customers, technicians, interventions, and events.
+- **Customers**: Associated with an organization and linked to their interventions.
+- **Technicians**: Employees of an organization, who can create or perform interventions.
+- **Interventions**: Performed by a technician for a customer.
+- **Events**: Steps or follow-ups related to an intervention.
 
-## Choix clés de modélisation
+## Key Modeling Choices
 
-- Ajout d’un champ **created_by** dans la table _Event_ pour tracer l’auteur (technicien).
-- Relations hiérarchiques claires : une organisation est l’entité racine, et toutes les autres tables y sont reliées.
-- Gestion explicite des dépendances avec des règles de suppression adaptées aux besoins métier.
+- Addition of a **created_by** field in the _Event_ table to track the author (technician).
+- Clear hierarchical relationships: An organization is the root entity, and all other tables are linked to it.
+- Explicit dependency management with deletion rules tailored to business needs.
 
-## Règles de transitions (on delete)
+## Transition Rules (on delete)
 
-- **CASCADE** :
-- Organisation → Techniciens, Clients, Interventions, Events
+- **CASCADE**:
+- Organization → Technicians, Clients, Interventions, Events
 - Client → Interventions
 - Intervention → Events
 
-  > Permet la suppression automatique des entités dépendantes.
+> Allows automatic deletion of dependent entities.
 
-- **RESTRICT** :
-- Technicien → Interventions
+- **RESTRICT**:
+- Technician → Interventions
 
-  > Empêche de supprimer un technicien tant que des interventions lui sont associées.
+> Prevents a technician from being deleted as long as interventions are associated with them.
 
-- **SET NULL** :
+- **SET NULL**:
 - Event.created_by → Technician
-  > Un événement peut subsister même si son créateur est supprimé.
+> An event can persist even if its creator is deleted.
 
-## Compromis
+## Tradeoffs
 
-- **Simplicité vs intégrité** : la stratégie _CASCADE_ facilite la gestion globale en cas de suppression d’une organisation, mais implique la perte de toutes les données liées.
-- **Traçabilité** : le champ _created_by_ améliore le suivi des actions, au prix d’une relation optionnelle (_SET NULL_).
-- **Cohérence métier** : l’usage de _RESTRICT_ pour les techniciens garantit qu’aucune intervention ne reste sans responsable actif.
+- **Simplicity vs. Integrity**: The _CASCADE_ strategy facilitates overall management in the event of an organization deletion, but results in the loss of all related data.
+- **Traceability**: The _created_by_ field improves action tracking, at the cost of an optional relationship (_SET NULL_). - **Business consistency**: The use of _RESTRICT_ for technicians ensures that no intervention remains without an active manager.
 
-Ce design permet à la fois **flexibilité**, **traçabilité** et **cohérence** métier, tout en assurant une bonne maintenance grâce à l’ORM et à la gestion des migrations (Alembic).
+This design allows for **flexibility**, **traceability**, and **business consistency**, while ensuring effective maintenance thanks to ORM and migration management (Alembic).
