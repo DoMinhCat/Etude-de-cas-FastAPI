@@ -40,7 +40,7 @@ def create_item(
     
     item = Intervention(
         client_id=client.id,
-        organisation_id=current_user.org_id,
+        org_id=current_user.org_id,
         technician_id=technician.id,
         description=new_item.description,
         status=new_item.status

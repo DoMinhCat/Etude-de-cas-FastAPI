@@ -1,0 +1,3 @@
+CREATE DATABASE GarageOS;
+-- CREATE USER garage WITH PASSWORD 'garage_password';
+-- GRANT ALL PRIVILEGES ON DATABASE "GarageOS" to garage;

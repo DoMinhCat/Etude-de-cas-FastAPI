@@ -12,3 +12,4 @@ passlib[bcrypt]
 python-multipart
 pydantic[email]
 httpx
+psycopg2
